@@ -108,6 +108,15 @@ static uint8_t tabla[] = {
     0x00, 0x00, 0x7F, 0x00, 0x00, 0x00, // |
     0x00, 0x41, 0x36, 0x08, 0x00, 0x00, // }
 };
+void config_TIMER0(void)
+{
+  TCCR0A = (1 << WGM01);  // Activa el bit CTC (clear timer on compare match)                        // del TCCR0A (timer counter/control register)
+  OCR0A = 62;             // valor de comparacion de int cada 1ms
+  TCCR0B = (1 << CS02);   // divido por 256 y generar interrupciones cada 1 ms
+  TIMSK0 = (1 << OCIE0A); // Habilita las interrupciones entimer compare&=~
+}
+
+
 uint8_t p;
 uint8_t fila[7]{0b00000010, 0b00000100, 0b00001000, 0b00010000, 0b00100000, 0b01000000, 0b10000000};
 uint8_t FILA;
@@ -238,14 +247,6 @@ ISR(TIMER0_COMPA_vect)
 {
   cnt++;
   p++;
-}
-
-void config_TIMER0(void)
-{
-  TCCR0A = (1 << WGM01);  // Activa el bit CTC (clear timer on compare match)                        // del TCCR0A (timer counter/control register)
-  OCR0A = 62;             // valor de comparacion de int cada 1ms
-  TCCR0B = (1 << CS02);   // divido por 256 y generar interrupciones cada 1 ms
-  TIMSK0 = (1 << OCIE0A); // Habilita las interrupciones entimer compare&=~
 }
 
 
