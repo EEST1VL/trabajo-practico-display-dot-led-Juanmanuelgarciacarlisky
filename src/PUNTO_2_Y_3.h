@@ -6,5 +6,5 @@
 void mostrado(uint8_t i, uint8_t val_fila, uint8_t cant);
 
 void enviar_mensaje(uint8_t *columna, const uint8_t *mensaje);
-
+// hola
 #endif
