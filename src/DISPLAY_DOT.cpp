@@ -1,9 +1,6 @@
 #include <Arduino.h>
+#include "DISPLAY_DOT.h"
 
-#ifndef _PUNTO1_C_
-#define _PUNTO1_C_
-
-uint8_t msj[] = {48, 48, 109, 58, 48, 48, 115};
 static uint8_t tabla[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // espacio
     0x00, 0x00, 0x5F, 0x00, 0x00, 0x00, // !
@@ -101,11 +98,8 @@ static uint8_t tabla[] = {
     0x00, 0x41, 0x36, 0x08, 0x00, 0x00, // }
 };
 
-
-
 uint8_t fila[7]{0b00000010, 0b00000100, 0b00001000, 0b00010000, 0b00100000, 0b01000000, 0b10000000};
-
-
+char msj[] = {48, 48, 109, 58, 48, 48, 115};
 uint8_t columna[128]{
     48,
     48,
@@ -113,7 +107,44 @@ uint8_t columna[128]{
     58,
     48,
 };
-void enviar_mensaje(uint8_t *columna, uint8_t *mensaje)
+uint8_t FILA;
+uint8_t p;
+uint8_t aux;
+
+uint16_t flag_tiempo, flag_END_TIME, flag_titilado;
+uint8_t total_ms = 50, flag1, flag2, flag3, old_cnt;
+uint8_t flag_tiempo_suma, flag_tiempo_resta;
+bool flag_estado_END_TIME;
+uint16_t tiempo;
+uint16_t cnt2;
+
+uint8_t i;
+uint8_t cnt;
+
+uint8_t cant_fila;
+uint8_t val_fila;
+
+
+
+typedef enum
+{
+  STOP,
+  START,
+  END_TIME,
+  BOTON_SPEED
+} ESTADO;
+ESTADO estado;
+
+
+void config_TIMER0(void)
+{
+  TCCR0A = (1 << WGM01);  // Activa el bit CTC (clear timer on compare match)                        // del TCCR0A (timer counter/control register)
+  OCR0A = 62;             // valor de comparacion de int cada 1ms
+  TCCR0B = (1 << CS02);   // divido por 256 y generar interrupciones cada 1 ms
+  TIMSK0 = (1 << OCIE0A); // Habilita las interrupciones entimer compare&=~
+}
+
+void enviar_mensaje(uint8_t *columna, const char *mensaje)
 {
 
   uint8_t indice, i = 0;
@@ -197,7 +228,7 @@ void Multiplexado(uint16_t num)
   {
     cent = num / 60;
   }
-  msj[0] = umil + 48;
+    msj[0] = umil + 48;
   msj[1] = cent + 48;
 
   msj[4] = dec + 48;
@@ -223,11 +254,203 @@ void Registro_de_desplazamiento(uint64_t val, uint8_t cant)
 			PORTB |= (1 << PB1); //clock
       PORTB &= ~(1 << PB1);
   }
-	}
+}
 
 
+ void enable(void){
+     PORTB |= (1<<PB0);
+    PORTB &= ~(1<<PB0);
+    }
 
 
+    void puertos(void){
+    DDRB |= (1<<PB0);
+    DDRB |= (1<<PB1);
+    DDRB |= (1<<PB2);
+    DDRB |= (1<<PB3);
+    DDRC |= (1<<PC3);
+    }
 
 
-#endif
+void barrido_display(void){
+      if(p == 250){
+       aux = columna[0];
+     for(uint8_t i=0 ; i<120 ;i++){
+       columna[i]= columna[i+1];
+     }
+     columna[120] = aux;
+    }
+    }
+
+    void Multiplexado_filas(void){
+    if (cnt == 1)
+    {
+  
+      FILA++;
+      cnt = 0;
+      if (FILA == 7)
+      {
+        FILA = 0;
+      }
+    }
+  }
+
+
+  void pulsadores(void){
+    switch (estado)
+    {
+    case STOP:
+    
+    //suma
+      if ((PINC & (1 << PC5)) == 0 && flag1 == 0 && total_ms == 50)
+      {
+      flag1 = 1;
+      cnt++;
+      tiempo = 0;
+      
+      total_ms = 0;
+      }
+
+      if ((PINC & (1 << PC5)) != 0 && flag1 == 1 && total_ms == 50)
+      {
+      flag1 = 0;
+      total_ms = 0;
+      }
+
+
+    //resta
+      if ((PINC & (1 << PC4)) == 0 && flag2 == 0 && total_ms == 50)
+      {
+      flag2 = 1;
+      cnt--;
+      tiempo = 0;
+      total_ms = 0;
+      }
+
+      if ((PINC & (1 << PC4)) != 0 && flag2 == 1 && total_ms == 50)
+      {
+      flag2 = 0;
+      total_ms = 0;
+      }
+
+      if(flag1 == 1){
+        if(tiempo == 3000){
+        estado = BOTON_SPEED;
+        flag_tiempo_suma = 0;
+        }
+      }
+      if(flag2 == 1){
+        if(tiempo == 3000){
+        estado = BOTON_SPEED;
+        flag_tiempo_resta = 0;
+        }
+      }
+
+    //cambio de estado
+      if ((PINC & (1 << PC3)) == 0 && flag3 == 0 && total_ms == 50)
+      {
+      flag3 = 1;
+      estado = START;
+      old_cnt = cnt;
+      flag_tiempo = 0;
+      total_ms = 0;
+      }
+
+      if ((PINC & (1 << PC3)) != 0 && flag3 == 1 && total_ms == 50)
+      {
+      flag3 = 0;
+      total_ms = 0;
+      }
+      break;
+
+    case START:
+    if(flag_tiempo == 1000){
+      cnt--;
+      flag_tiempo = 0;
+      if(cnt == 0){
+        estado = END_TIME;
+        flag_END_TIME = 0;
+        flag_titilado = 0;
+      }
+    }
+
+    //cambio de estado
+      if ((PINC & (1 << PC3)) == 0 && flag3 == 0 && total_ms == 50)
+      {
+      flag3 = 1;
+      estado = STOP;
+      cnt = old_cnt;
+      flag_tiempo = 0;
+      total_ms = 0;
+      }
+
+      if ((PINC & (1 << PC3)) != 0 && flag3 == 1 && total_ms == 50)
+      {
+      flag3 = 0;
+      total_ms = 0;
+      }
+      break;
+    
+    
+
+      break;
+
+    case END_TIME:
+    if(flag_estado_END_TIME == 0){
+    enviar_mensaje(columna, "ENDTIME");  
+    }
+    if(flag_estado_END_TIME == 1){
+    enviar_mensaje(columna, "       ");
+    }
+    if(flag_titilado == 500){
+      flag_estado_END_TIME = !flag_estado_END_TIME;
+      flag_titilado = 0;
+    }
+    if(flag_END_TIME == 1000){
+      estado = STOP;
+      cnt = old_cnt;
+      flag_END_TIME = 0;
+      flag_estado_END_TIME = 0;
+      flag_titilado = 0;
+    }
+    
+
+
+      break;
+
+    case BOTON_SPEED:
+    if(flag1 == 1){
+      if(flag_tiempo_suma == 250){
+        cnt++;
+        flag_tiempo_suma = 0;
+      }
+    }
+    if ((PINC & (1 << PC5)) != 0 && flag1 == 1 && total_ms == 50)
+      {
+      flag1 = 0;
+      estado = STOP;
+      flag_tiempo_suma = 0;
+      total_ms = 0;
+      }
+     
+
+    if(flag2 == 1){
+      if(flag_tiempo_resta == 250){
+        if(cnt != 0){
+        cnt--;
+        }
+        flag_tiempo_resta = 0;
+      } 
+    }
+    if ((PINC & (1 << PC4)) != 0 && flag2 == 1 && total_ms == 50)
+      {
+      flag2 = 0;
+      estado = STOP;
+      flag_tiempo_resta = 0;
+      total_ms = 0;
+      }
+
+      break;
+      
+    }
+    }
