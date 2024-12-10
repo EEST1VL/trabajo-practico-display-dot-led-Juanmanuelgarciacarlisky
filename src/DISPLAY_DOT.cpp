@@ -1,5 +1,10 @@
 #include <Arduino.h>
-#include "DISPLAY_DOT.h"
+
+
+uint8_t msj[] = {48, 48, 109, 58, 48, 48, 115};
+
+
+
 
 static uint8_t tabla[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // espacio
@@ -98,43 +103,18 @@ static uint8_t tabla[] = {
     0x00, 0x41, 0x36, 0x08, 0x00, 0x00, // }
 };
 
-uint8_t fila[7]{0b00000010, 0b00000100, 0b00001000, 0b00010000, 0b00100000, 0b01000000, 0b10000000};
-char msj[] = {48, 48, 109, 58, 48, 48, 115};
-uint8_t columna[128]{
-    48,
-    48,
-    109,
-    58,
-    48,
-};
-uint8_t FILA;
-uint8_t p;
-uint8_t aux;
-
-uint16_t flag_tiempo, flag_END_TIME, flag_titilado;
-uint8_t total_ms = 50, flag1, flag2, flag3, old_cnt;
-uint8_t flag_tiempo_suma, flag_tiempo_resta;
-bool flag_estado_END_TIME;
-uint16_t tiempo;
-uint16_t cnt2;
-
-uint8_t i;
-uint8_t cnt;
-
-uint8_t cant_fila;
-uint8_t val_fila;
-
-
-
-typedef enum
+void Config_Puertos()
 {
-  STOP,
-  START,
-  END_TIME,
-  BOTON_SPEED
-} ESTADO;
-ESTADO estado;
+  DDRB |= (1 << PB0) | (1 << PB1) | (1 << PB2) | (1 << PB3);
 
+  DDRC &= ~(1 << PC3) & ~(1 << PC4) & ~(1 << PC5);
+
+  PORTC |= (1 << PC3) | (1 << PC4) | (1 << PC5);
+
+  DDRD &= ~(1 << PD2) & ~(1 << PD3) & ~(1 << PD5);
+
+  PORTD |= (1 << PD2) | (1 << PD3) | (1 << PD5);
+}
 
 void config_TIMER0(void)
 {
@@ -143,30 +123,50 @@ void config_TIMER0(void)
   TCCR0B = (1 << CS02);   // divido por 256 y generar interrupciones cada 1 ms
   TIMSK0 = (1 << OCIE0A); // Habilita las interrupciones entimer compare&=~
 }
+uint16_t temperatura2;
+
+void Conversion(uint16_t temperatura2){
+  uint8_t mil2, cent2, dec2, uni2;
+  uint16_t temperatura;
+ 
+    temperatura = ((uint32_t)temperatura2*5000)/1022;
+    mil2 = temperatura / 1000;//1234/1000=1
+    cent2 = temperatura / 100 %10;// 1234/100 = 12%10 = 2
+    dec2 = temperatura / 10 % 10;// 1234/10 = 123%10 = 3
+    uni2 = temperatura % 10;//1234%10 = 4
+
+  msj[0] = mil2 + 48;
+  msj[1] = 46;
+  msj[2] = cent2 + 48;
+  msj[3] = dec2 + 48;
+  msj[4] = uni2 + 48;
+  msj[5] = 86;
+  msj[6] = 32;
+
+}
 
 void enviar_mensaje(uint8_t *columna, const char *mensaje)
 {
 
   uint8_t indice, i = 0;
-  for (uint8_t j = 0; mensaje[j] != '\0'; j++)
+  for (uint8_t j = 0; mensaje[j] != '\0'; j++)//manda letras hasta encontrar el caracter nulo
   {
 
     indice = mensaje[j] - 32;
 
     for (uint8_t j = 0; j < 6; j++)
     {
-      columna[i] = tabla[indice * 6 + j]; // columna[n] = columna[n+1]
+      columna[i] = tabla[indice * 6 + j]; // multiplica indice por 6 para que ese sea el ancho de la letra
       i++;
     }
   }
 }
 
-
-void mostrado(uint8_t i, uint8_t val_fila, uint8_t cant)
+void mostrado(uint8_t i, uint8_t val_fila, uint8_t cant,uint8_t *columna)//
 {
 
   uint8_t j;
-  for (j = 128; j > 0; j--)
+  for (j = 128; j > 0; j--)// muestra las columnas
   {
     if (((columna[j] >> i) & 0x01) == 1)
     {
@@ -180,7 +180,7 @@ void mostrado(uint8_t i, uint8_t val_fila, uint8_t cant)
     PORTB &= ~(1 << PB1);
   }
 
-  if (((columna[0] >> i) & 0x01) == 1)
+  if (((columna[0] >> i) & 0x01) == 1)// muestra la primera fila, porque si no se ve
   {
     PORTB |= (1 << PB2); // data
   }
@@ -191,7 +191,7 @@ void mostrado(uint8_t i, uint8_t val_fila, uint8_t cant)
   PORTB |= (1 << PB1); // clock
   PORTB &= ~(1 << PB1);
 
-  for (uint8_t e = 0; e < 9; e++)
+  for (uint8_t e = 0; e < 9; e++)//muestra las filas
   {
     if (val_fila & 1)
     {
@@ -207,8 +207,6 @@ void mostrado(uint8_t i, uint8_t val_fila, uint8_t cant)
     PORTB &= ~(1 << PB1);
   }
 }
-
-
 
 void Multiplexado(uint16_t num)
 {
@@ -228,229 +226,22 @@ void Multiplexado(uint16_t num)
   {
     cent = num / 60;
   }
-    msj[0] = umil + 48;
+  msj[0] = umil + 48;
   msj[1] = cent + 48;
-
+  msj[2] = 109;//m
+  msj[3] = 58;//:
   msj[4] = dec + 48;
   msj[5] = uni + 48;
+  msj[6] = 115;//s
 }
 
 
-
-void Registro_de_desplazamiento(uint64_t val, uint8_t cant)
+void initInterrupts(void)
 {
-	uint8_t i;
-
-	for (i = 0; i < cant; i++)  {
-      if(val & 1){
-        PORTB |= (1 << PB2); //data
-      }
-      else
-      {
-        PORTB &= ~(1 << PB2);
-      }
-			val >>= 1;
-		
-			PORTB |= (1 << PB1); //clock
-      PORTB &= ~(1 << PB1);
-  }
+  EIMSK |= (1 << INT0); //habilita interrupcion externa INT0 en PD2
+  EIMSK |= (1 << INT1);//habilita interrupcion externa INT1 en PD3
+  EICRA |= (1 << ISC01);//configura flanco ascendente en interrupcion externa INT0
+  EICRA |= (1 << ISC11);//configura flanco ascendente en interrupcion externa INT1
+  sei();
 }
 
-
- void enable(void){
-     PORTB |= (1<<PB0);
-    PORTB &= ~(1<<PB0);
-    }
-
-
-    void puertos(void){
-    DDRB |= (1<<PB0);
-    DDRB |= (1<<PB1);
-    DDRB |= (1<<PB2);
-    DDRB |= (1<<PB3);
-    DDRC |= (1<<PC3);
-    }
-
-
-void barrido_display(void){
-      if(p == 250){
-       aux = columna[0];
-     for(uint8_t i=0 ; i<120 ;i++){
-       columna[i]= columna[i+1];
-     }
-     columna[120] = aux;
-    }
-    }
-
-    void Multiplexado_filas(void){
-    if (cnt == 1)
-    {
-  
-      FILA++;
-      cnt = 0;
-      if (FILA == 7)
-      {
-        FILA = 0;
-      }
-    }
-  }
-
-
-  void pulsadores(void){
-    switch (estado)
-    {
-    case STOP:
-    
-    //suma
-      if ((PINC & (1 << PC5)) == 0 && flag1 == 0 && total_ms == 50)
-      {
-      flag1 = 1;
-      cnt++;
-      tiempo = 0;
-      
-      total_ms = 0;
-      }
-
-      if ((PINC & (1 << PC5)) != 0 && flag1 == 1 && total_ms == 50)
-      {
-      flag1 = 0;
-      total_ms = 0;
-      }
-
-
-    //resta
-      if ((PINC & (1 << PC4)) == 0 && flag2 == 0 && total_ms == 50)
-      {
-      flag2 = 1;
-      cnt--;
-      tiempo = 0;
-      total_ms = 0;
-      }
-
-      if ((PINC & (1 << PC4)) != 0 && flag2 == 1 && total_ms == 50)
-      {
-      flag2 = 0;
-      total_ms = 0;
-      }
-
-      if(flag1 == 1){
-        if(tiempo == 3000){
-        estado = BOTON_SPEED;
-        flag_tiempo_suma = 0;
-        }
-      }
-      if(flag2 == 1){
-        if(tiempo == 3000){
-        estado = BOTON_SPEED;
-        flag_tiempo_resta = 0;
-        }
-      }
-
-    //cambio de estado
-      if ((PINC & (1 << PC3)) == 0 && flag3 == 0 && total_ms == 50)
-      {
-      flag3 = 1;
-      estado = START;
-      old_cnt = cnt;
-      flag_tiempo = 0;
-      total_ms = 0;
-      }
-
-      if ((PINC & (1 << PC3)) != 0 && flag3 == 1 && total_ms == 50)
-      {
-      flag3 = 0;
-      total_ms = 0;
-      }
-      break;
-
-    case START:
-    if(flag_tiempo == 1000){
-      cnt--;
-      flag_tiempo = 0;
-      if(cnt == 0){
-        estado = END_TIME;
-        flag_END_TIME = 0;
-        flag_titilado = 0;
-      }
-    }
-
-    //cambio de estado
-      if ((PINC & (1 << PC3)) == 0 && flag3 == 0 && total_ms == 50)
-      {
-      flag3 = 1;
-      estado = STOP;
-      cnt = old_cnt;
-      flag_tiempo = 0;
-      total_ms = 0;
-      }
-
-      if ((PINC & (1 << PC3)) != 0 && flag3 == 1 && total_ms == 50)
-      {
-      flag3 = 0;
-      total_ms = 0;
-      }
-      break;
-    
-    
-
-      break;
-
-    case END_TIME:
-    if(flag_estado_END_TIME == 0){
-    enviar_mensaje(columna, "ENDTIME");  
-    }
-    if(flag_estado_END_TIME == 1){
-    enviar_mensaje(columna, "       ");
-    }
-    if(flag_titilado == 500){
-      flag_estado_END_TIME = !flag_estado_END_TIME;
-      flag_titilado = 0;
-    }
-    if(flag_END_TIME == 1000){
-      estado = STOP;
-      cnt = old_cnt;
-      flag_END_TIME = 0;
-      flag_estado_END_TIME = 0;
-      flag_titilado = 0;
-    }
-    
-
-
-      break;
-
-    case BOTON_SPEED:
-    if(flag1 == 1){
-      if(flag_tiempo_suma == 250){
-        cnt++;
-        flag_tiempo_suma = 0;
-      }
-    }
-    if ((PINC & (1 << PC5)) != 0 && flag1 == 1 && total_ms == 50)
-      {
-      flag1 = 0;
-      estado = STOP;
-      flag_tiempo_suma = 0;
-      total_ms = 0;
-      }
-     
-
-    if(flag2 == 1){
-      if(flag_tiempo_resta == 250){
-        if(cnt != 0){
-        cnt--;
-        }
-        flag_tiempo_resta = 0;
-      } 
-    }
-    if ((PINC & (1 << PC4)) != 0 && flag2 == 1 && total_ms == 50)
-      {
-      flag2 = 0;
-      estado = STOP;
-      flag_tiempo_resta = 0;
-      total_ms = 0;
-      }
-
-      break;
-      
-    }
-    }
