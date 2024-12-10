@@ -1,340 +1,247 @@
 #include <Arduino.h>
-#include "libjuan.h"
 
-static inline void initADC0(void);
-int main()
+
+uint8_t msj[] = {48, 48, 109, 58, 48, 48, 115};
+
+
+
+
+static uint8_t tabla[] = {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // espacio
+    0x00, 0x00, 0x5F, 0x00, 0x00, 0x00, // !
+    0x00, 0x07, 0x00, 0x07, 0x00, 0x00, // "
+    0x14, 0x7F, 0x14, 0x7F, 0x14, 0x00, // #
+    0x24, 0x2A, 0x7F, 0x2A, 0x12, 0x00, // $
+    0x23, 0x13, 0x08, 0x64, 0x62, 0x00, // %
+    0x36, 0x49, 0x55, 0x22, 0x50, 0x00, // &
+    0x00, 0x05, 0x03, 0x00, 0x00, 0x00, // '
+    0x00, 0x1C, 0x22, 0x41, 0x00, 0x00, // (
+    0x00, 0x41, 0x22, 0x1C, 0x00, 0x00, // )
+    0x14, 0x08, 0x3E, 0x08, 0x14, 0x00, // *
+    0x08, 0x08, 0x3E, 0x08, 0x08, 0x00, // +
+    0x00, 0x50, 0x30, 0x00, 0x00, 0x00, // ,
+    0x08, 0x08, 0x08, 0x08, 0x08, 0x00, // -
+    0x00, 0x60, 0x60, 0x00, 0x00, 0x00, // .
+    0x20, 0x10, 0x08, 0x04, 0x02, 0x00, // /
+    0x3E, 0x41, 0x41, 0x41, 0x3E, 0x00, // 0
+    0x00, 0x42, 0x7F, 0x40, 0x00, 0x00, // 1
+    0x42, 0x61, 0x51, 0x49, 0x46, 0x00, // 2
+    0x21, 0x41, 0x45, 0x4B, 0x31, 0x00, // 3
+    0x18, 0x14, 0x12, 0x7F, 0x10, 0x00, // 4
+    0x27, 0x45, 0x45, 0x45, 0x39, 0x00, // 5
+    0x3C, 0x4A, 0x49, 0x49, 0x30, 0x00, // 6
+    0x01, 0x71, 0x09, 0x05, 0x03, 0x00, // 7
+    0x36, 0x49, 0x49, 0x49, 0x36, 0x00, // 8
+    0x06, 0x49, 0x49, 0x29, 0x1E, 0x00, // 9
+    0x00, 0x36, 0x36, 0x00, 0x00, 0x00, // :
+    0x00, 0x56, 0x36, 0x00, 0x00, 0x00, // ;
+    0x08, 0x14, 0x22, 0x41, 0x00, 0x00, // <
+    0x14, 0x14, 0x14, 0x14, 0x14, 0x00, // =
+    0x00, 0x41, 0x22, 0x14, 0x08, 0x00, // >
+    0x02, 0x01, 0x51, 0x09, 0x06, 0x00, // ?
+    0x32, 0x49, 0x79, 0x41, 0x3E, 0x00, // @
+    0x7E, 0x09, 0x09, 0x09, 0x7E, 0x00, // A
+    0x7F, 0x49, 0x49, 0x49, 0x36, 0x00, // B
+    0x3E, 0x41, 0x41, 0x41, 0x22, 0x00, // C
+    0x7F, 0x41, 0x41, 0x22, 0x1C, 0x00, // D
+    0x7F, 0x49, 0x49, 0x49, 0x41, 0x00, // E
+    0x7F, 0x09, 0x09, 0x09, 0x01, 0x00, // F
+    0x3E, 0x41, 0x49, 0x49, 0x7A, 0x00, // G
+    0x7F, 0x08, 0x08, 0x08, 0x7F, 0x00, // H
+    0x41, 0x41, 0x7F, 0x41, 0x41, 0x00, // I
+    0x20, 0x40, 0x40, 0x40, 0x3F, 0x00, // J
+    0x7F, 0x08, 0x14, 0x22, 0x41, 0x00, // K
+    0x7F, 0x40, 0x40, 0x40, 0x40, 0x00, // L
+    0x7F, 0x02, 0x0C, 0x02, 0x7F, 0x00, // M
+    0x7F, 0x04, 0x08, 0x10, 0x7F, 0x00, // N
+    0x3E, 0x41, 0x41, 0x41, 0x3E, 0x00, // O
+    0x7F, 0x09, 0x09, 0x09, 0x06, 0x00, // P
+    0x3E, 0x41, 0x51, 0x21, 0x5E, 0x00, // Q
+    0x7F, 0x09, 0x19, 0x29, 0x46, 0x00, // R
+    0x46, 0x49, 0x49, 0x49, 0x31, 0x00, // S
+    0x01, 0x01, 0x7F, 0x01, 0x01, 0x00, // T
+    0x3F, 0x40, 0x40, 0x40, 0x3F, 0x00, // U
+    0x1F, 0x20, 0x40, 0x20, 0x1F, 0x00, // V
+    0x3F, 0x40, 0x38, 0x40, 0x3F, 0x00, // W
+    0x63, 0x14, 0x08, 0x14, 0x63, 0x00, // X
+    0x07, 0x08, 0x70, 0x08, 0x07, 0x00, // Y
+    0x61, 0x51, 0x49, 0x45, 0x43, 0x00, // Z
+    0x00, 0x7F, 0x41, 0x41, 0x00, 0x00, // [
+    0x02, 0x04, 0x08, 0x10, 0x20, 0x00, // "\"
+    0x00, 0x41, 0x41, 0x7F, 0x00, 0x00, // ]
+    0x04, 0x02, 0x01, 0x02, 0x04, 0x00, // ^
+    0x40, 0x40, 0x40, 0x40, 0x40, 0x00, // _
+    0x00, 0x01, 0x02, 0x04, 0x00, 0x00, // `
+    0x20, 0x54, 0x54, 0x54, 0x78, 0x00, // a
+    0x7F, 0x48, 0x44, 0x44, 0x38, 0x00, // b
+    0x38, 0x44, 0x44, 0x44, 0x00, 0x00, // c
+    0x38, 0x44, 0x44, 0x48, 0x7F, 0x00, // d
+    0x38, 0x54, 0x54, 0x54, 0x18, 0x00, // e
+    0x08, 0x7E, 0x09, 0x01, 0x02, 0x00, // f
+    0x08, 0x14, 0x54, 0x54, 0x3C, 0x00, // g
+    0x7F, 0x08, 0x04, 0x04, 0x78, 0x00, // h
+    0x00, 0x44, 0x7D, 0x40, 0x00, 0x00, // i
+    0x20, 0x40, 0x44, 0x3D, 0x00, 0x00, // j
+    0x00, 0x7F, 0x10, 0x28, 0x44, 0x00, // k
+    0x00, 0x41, 0x7F, 0x40, 0x00, 0x00, // l
+    0x7C, 0x04, 0x18, 0x04, 0x78, 0x00, // m
+    0x7C, 0x08, 0x04, 0x04, 0x78, 0x00, // n
+    0x38, 0x44, 0x44, 0x44, 0x38, 0x00, // o
+    0x7C, 0x14, 0x14, 0x14, 0x08, 0x00, // p
+    0x08, 0x14, 0x14, 0x18, 0x7C, 0x00, // q
+    0x7C, 0x08, 0x04, 0x04, 0x08, 0x00, // r
+    0x48, 0x54, 0x54, 0x54, 0x20, 0x00, // s
+    0x04, 0x3F, 0x44, 0x40, 0x20, 0x00, // t
+    0x3C, 0x40, 0x40, 0x20, 0x7C, 0x00, // u
+    0x1C, 0x20, 0x40, 0x20, 0x1C, 0x00, // v
+    0x3C, 0x40, 0x30, 0x40, 0x3C, 0x00, // w
+    0x44, 0x28, 0x10, 0x28, 0x44, 0x00, // x
+    0x0C, 0x50, 0x50, 0x50, 0x3C, 0x00, // y
+    0x44, 0x64, 0x54, 0x4C, 0x44, 0x00, // z
+    0x00, 0x08, 0x36, 0x41, 0x00, 0x00, // {
+    0x00, 0x00, 0x7F, 0x00, 0x00, 0x00, // |
+    0x00, 0x41, 0x36, 0x08, 0x00, 0x00, // }
+};
+
+void Config_Puertos()
+{
+  DDRB |= (1 << PB0) | (1 << PB1) | (1 << PB2) | (1 << PB3);
+
+  DDRC &= ~(1 << PC3) & ~(1 << PC4) & ~(1 << PC5);
+
+  PORTC |= (1 << PC3) | (1 << PC4) | (1 << PC5);
+
+  DDRD &= ~(1 << PD2) & ~(1 << PD3) & ~(1 << PD5);
+
+  PORTD |= (1 << PD2) | (1 << PD3) | (1 << PD5);
+}
+
+void config_TIMER0(void)
+{
+  TCCR0A = (1 << WGM01);  // Activa el bit CTC (clear timer on compare match)                        // del TCCR0A (timer counter/control register)
+  OCR0A = 62;             // valor de comparacion de int cada 1ms
+  TCCR0B = (1 << CS02);   // divido por 256 y generar interrupciones cada 1 ms
+  TIMSK0 = (1 << OCIE0A); // Habilita las interrupciones entimer compare&=~
+}
+uint16_t temperatura2;
+
+void Conversion(uint16_t temperatura2){
+  uint8_t mil2, cent2, dec2, uni2;
+  uint16_t temperatura;
+ 
+    temperatura = ((uint32_t)temperatura2*5000)/1022;
+    mil2 = temperatura / 1000;//1234/1000=1
+    cent2 = temperatura / 100 %10;// 1234/100 = 12%10 = 2
+    dec2 = temperatura / 10 % 10;// 1234/10 = 123%10 = 3
+    uni2 = temperatura % 10;//1234%10 = 4
+
+  msj[0] = mil2 + 48;
+  msj[1] = 46;
+  msj[2] = cent2 + 48;
+  msj[3] = dec2 + 48;
+  msj[4] = uni2 + 48;
+  msj[5] = 86;
+  msj[6] = 32;
+
+}
+
+void enviar_mensaje(uint8_t *columna, const char *mensaje)
 {
 
-  config_TIMER0();
-  initADC0();
-  initInterrupts();
-
-  ADCSRA |= (1 << ADSC);
-  Config_Puertos();
-
-  /*uint8_t aux;*/
-
-  estado = ANALOGICO_DIGITAL;
-  enviar_mensaje(columna,"0.000V");
-
-  while (1)
+  uint8_t indice, i = 0;
+  for (uint8_t j = 0; mensaje[j] != '\0'; j++)//manda letras hasta encontrar el caracter nulo
   {
 
-    switch (estado)
+    indice = mensaje[j] - 32;
+
+    for (uint8_t j = 0; j < 6; j++)
     {
-    case STOP:
-      Multiplexado(cnt);
-      enviar_mensaje(columna, msj); // muestra 00m:00s
-
-      if (angle >= 4)
-      {
-        cnt = angle / 4;
-      }
-      if (angle < 4)
-      {
-        angle = 4;
-      }
-
-      if ((PINC & (1 << PC5)) == 0 && flag1 == 0 && total_ms == 50) // suma
-      {
-        flag1 = 1;
-        angle = angle + 4;
-        tiempo = 0;
-
-        total_ms = 0;
-      }
-
-      if ((PINC & (1 << PC5)) != 0 && flag1 == 1 && total_ms == 50)
-      {
-        flag1 = 0;
-        total_ms = 0;
-      }
-
-      // resta
-      if ((PINC & (1 << PC4)) == 0 && flag2 == 0 && total_ms == 50)
-      {
-        flag2 = 1;
-        if (angle > 4)
-        {
-          angle = angle - 4;
-        }
-        tiempo = 0;
-        total_ms = 0;
-      }
-
-      if ((PINC & (1 << PC4)) != 0 && flag2 == 1 && total_ms == 50)
-      {
-        flag2 = 0;
-        total_ms = 0;
-      }
-
-      if (flag1 == 1)
-      { // si el boton de suma esta presionado por 3 segundos
-        if (tiempo == 3000)
-        {
-          estado = BOTON_SPEED;
-          flag_tiempo_suma = 0;
-        }
-      }
-      if (flag2 == 1)
-      { // si el boton de resta esta presionado por 3 segundos
-        if (tiempo == 3000)
-        {
-          estado = BOTON_SPEED;
-          flag_tiempo_resta = 0;
-        }
-      }
-
-      // comienza la cuenta regresiva
-      if ((PIND & (1 << PD4)) == 0 && flag3 == 0 && total_ms == 50)
-      {
-        flag3 = 1;
-        estado = START;
-
-        enviar_mensaje(columna,msj);
-        old_angle = angle;
-        flag_tiempo = 0;
-        total_ms = 0;
-      }
-
-      if ((PIND & (1 << PD4)) != 0 && flag3 == 1 && total_ms == 50)
-      {
-        flag3 = 0;
-        total_ms = 0;
-      }
-
-      // cambia a ver la tension del adc
-      if ((PIND & (1 << PD5)) == 0 && flag5 == 0 && total_ms == 50)
-      {
-        flag5 = 1;
-        estado = ANALOGICO_DIGITAL;
-
-        enviar_mensaje(columna2,"0.000V");
-
-        global = 0;
-        flag = 0;
-
-        total_ms = 0;
-      }
-
-      if ((PIND & (1 << PD5)) != 0 && flag5 == 1 && total_ms == 50)
-      {
-        flag5 = 0;
-        total_ms = 0;
-      }
-      break;
-
-    case ANALOGICO_DIGITAL:
-
-      if (flag >= 32)
-      { // despues de 32 mediciones saca el promedio
-        temperatura2 = (global / 32);
-        global = 0;
-        flag = 0;
-      }
-
-      Conversion(temperatura2); // muestra el promedio de las 32 mediciones
-      enviar_mensaje(columna, msj);           // muestra en pantalla
-
-      // cambia a stop
-      if ((PIND & (1 << PD5)) == 0 && flag5 == 0 && total_ms == 50)
-      {
-        flag5 = 1;
-        estado = STOP;
-        enviar_mensaje(columna,"00m:00s");
-
-        global = 0;
-        flag = 0;
-
-        total_ms = 0;
-      }
-
-      if ((PIND & (1 << PD5)) != 0 && flag5 == 1 && total_ms == 50)
-      {
-        flag5 = 0;
-        total_ms = 0;
-      }
-
-      break;
-
-    case START:
-
-      if (flag_tiempo == 1000)
-      { // por cada 1 segundo resta uno en el numero de la pantalla
-        angle = angle - 4;
-        flag_tiempo = 0;
-        if (angle == 0)
-        { // titila
-          estado = END_TIME;
-          flag_END_TIME = 0;
-          flag_titilado = 0;
-        }
-      }
-
-      // cambio de estado
-      if ((PIND & (1 << PD4)) == 0 && flag3 == 0 && total_ms == 50)
-      {
-        flag3 = 1;
-        estado = STOP;
-        angle = old_angle;
-        flag_tiempo = 0;
-        total_ms = 0;
-      }
-
-      if ((PIND & (1 << PD4)) != 0 && flag3 == 1 && total_ms == 50)
-      {
-        flag3 = 0;
-        total_ms = 0;
-      }
-      break;
-
-      break;
-
-    case END_TIME:
-
-      // cada 500 ms titila entre ENDTIEM y nada
-      if (flag_estado_END_TIME == 0)
-      {
-        enviar_mensaje(columna, "ENDTIME");
-      }
-      if (flag_estado_END_TIME == 1)
-      {
-        enviar_mensaje(columna, "       ");
-      }
-      if (flag_titilado == 500)
-      {
-        flag_estado_END_TIME = !flag_estado_END_TIME;
-        flag_titilado = 0;
-      }
-      if (flag_END_TIME == 1000)
-      { // cambia a stop luego de estar un segundo en este estado
-        estado = STOP;
-        angle = old_angle;
-        flag_END_TIME = 0;
-        flag_estado_END_TIME = 0;
-        flag_titilado = 0;
-      }
-
-      break;
-
-    case BOTON_SPEED:
-      Multiplexado(cnt);
-      enviar_mensaje(columna, msj);
-      if (angle >= 4)
-      {
-        cnt = angle / 4;
-      }
-      if (angle < 4)
-      { // si en el contador pone un segundo, no resta
-        angle = 4;
-      }
-
-      if (flag1 == 1)
-      {
-        if (flag_tiempo_suma == 250)
-        { // cada 250ms le resta uno al contador
-          angle = angle + 4;
-          flag_tiempo_suma = 0;
-        }
-      }
-      if ((PINC & (1 << PC5)) != 0 && flag1 == 1 && total_ms == 50)
-      {
-        flag1 = 0;
-        estado = STOP;
-        flag_tiempo_suma = 0;
-        total_ms = 0;
-      }
-
-      if (flag2 == 1)
-      {
-        if (flag_tiempo_resta == 250)
-        { // cada 250ms le resta uno al contador
-          if (angle > 4)
-          {
-            angle = angle - 4;
-          }
-          flag_tiempo_resta = 0;
-        }
-      }
-      if ((PINC & (1 << PC4)) != 0 && flag2 == 1 && total_ms == 50)
-      {
-        flag2 = 0;
-        estado = STOP;
-        flag_tiempo_resta = 0;
-        total_ms = 0;
-      }
-
-      break;
-    }
-
-    mostrado(FILA, fila[FILA], 128, columna);
-
-    PORTB |= (1 << PB0);
-    PORTB &= ~(1 << PB0);
-    /*if(p == 250){
-       aux = columna[0];
-     for(uint8_t i=0 ; i<120 ;i++){
-       columna[i]= columna[i+1];
-     }
-     columna[120] = aux;
-    }*/
-    if (cnt2 == 1)
-    {
-
-      FILA++;
-      cnt2 = 0;
-      if (FILA == 7)
-      {
-        FILA = 0;
-      }
-    }
-    if (total_ms >= 50)
-    {
-      total_ms = 50;
+      columna[i] = tabla[indice * 6 + j]; // multiplica indice por 6 para que ese sea el ancho de la letra
+      i++;
     }
   }
 }
 
-ISR(INT0_vect) // me interrumpio el PD2
+void mostrado(uint8_t i, uint8_t val_fila, uint8_t cant,uint8_t *columna)//
 {
-  (PIND & 0b00001000) ? angle-- : angle++; // le pregunto el estado al PD3
+
+  uint8_t j;
+  for (j = 128; j > 0; j--)// muestra las columnas
+  {
+    if (((columna[j] >> i) & 0x01) == 1)
+    {
+      PORTB |= (1 << PB2); // data
+    }
+    else
+    {
+      PORTB &= ~(1 << PB2);
+    }
+    PORTB |= (1 << PB1); // clock
+    PORTB &= ~(1 << PB1);
+  }
+
+  if (((columna[0] >> i) & 0x01) == 1)// muestra la primera fila, porque si no se ve
+  {
+    PORTB |= (1 << PB2); // data
+  }
+  else
+  {
+    PORTB &= ~(1 << PB2);
+  }
+  PORTB |= (1 << PB1); // clock
+  PORTB &= ~(1 << PB1);
+
+  for (uint8_t e = 0; e < 9; e++)//muestra las filas
+  {
+    if (val_fila & 1)
+    {
+      PORTB |= (1 << PB2); // data
+    }
+    else
+    {
+      PORTB &= ~(1 << PB2);
+    }
+    val_fila >>= 1;
+
+    PORTB |= (1 << PB1); // clock
+    PORTB &= ~(1 << PB1);
+  }
 }
 
-ISR(INT1_vect) // me interrumpio el PD3
+void Multiplexado(uint16_t num)
 {
-  (PIND & 0b00000100) ? angle++ : angle--; // le pregunto el estado al PD2
+  uint8_t umil, cent, dec, uni;
+
+  umil = num / 600;
+  cent = num / 60;
+
+  dec = ((num % 60) % 100) / 10;
+  uni = ((num % 1000) % 100) % 10;
+
+  if (num >= 600)
+  {
+    cent = (num % 600) / 60;
+  }
+  else
+  {
+    cent = num / 60;
+  }
+  msj[0] = umil + 48;
+  msj[1] = cent + 48;
+  msj[2] = 109;//m
+  msj[3] = 58;//:
+  msj[4] = dec + 48;
+  msj[5] = uni + 48;
+  msj[6] = 115;//s
 }
 
-ISR(TIMER0_COMPA_vect)
+
+void initInterrupts(void)
 {
-  cnt2++;
-  // p++;
-  total_ms++;
-  flag_tiempo++;
-  flag_END_TIME++;
-  flag_titilado++;
-  tiempo++;
-  flag_tiempo_resta++;
-  flag_tiempo_suma++;
+  EIMSK |= (1 << INT0); //habilita interrupcion externa INT0 en PD2
+  EIMSK |= (1 << INT1);//habilita interrupcion externa INT1 en PD3
+  EICRA |= (1 << ISC01);//configura flanco ascendente en interrupcion externa INT0
+  EICRA |= (1 << ISC11);//configura flanco ascendente en interrupcion externa INT1
+  sei();
 }
 
-
-
-ISR(ADC_vect)
-{
-  flag++;
-  valorAdc = ADC;
-  global = global + valorAdc;
-}
-
-static inline void initADC0(void)
-{
-  /* usamos como referencia el valor de AVCC */
-  ADMUX |= (1 << REFS0);
-  /* ADC clock prescaler 16MHz/128 = 125KHz */
-  ADCSRA |= (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
-  /* Habilito las interrupciones del conversor AD con ADIE y fijo el modo freerunning con ADATE*/
-  ADCSRA |= (1 << ADIE) | (1 << ADATE);
-  /* Habillitamos el ADC */
-  ADCSRA |= (1 << ADEN);
-}
